@@ -1,10 +1,13 @@
 # sysrsync
 Simple and safe native rsync wrapper for Python 3
 
+> - pjc fork is simple rollback to allow python 3.5 by removing f-string
+> - minor change to mutable and func call default args in some functions. this is a potential source of bugs in a lib or other setting where func may be called multiple times but the default arg is eval only once on import
+
 ## Requirements
 
 * rsync
-* python 3.6+
+* python 3.5+ (original was python 3.6+)
 
 **development**:
 
