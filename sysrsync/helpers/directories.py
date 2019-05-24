@@ -5,7 +5,7 @@ def get_directory_with_ssh(directory: str, ssh: Optional[str]) -> str:
     if ssh is None:
         return directory
 
-    return f'{ssh}:{directory}'
+    return '{ssh}:{directory}'.format(ssh=ssh, directory=directory)
 
 
 def sanitize_trailing_slash(source_dir: str, target_dir: str, sync_sourcedir_contents: bool = True) -> Tuple[str, str]:
@@ -28,4 +28,4 @@ def strip_trailing_slash(directory: str) -> str:
 def add_trailing_slash(directory: str) -> str:
     return (directory
             if directory.endswith('/')
-            else f'{directory}/')
+            else '{directory}/'.format(directory=directory))

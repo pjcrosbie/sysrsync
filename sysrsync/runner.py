@@ -24,4 +24,5 @@ def run(cwd=os.getcwd(), strict=True, verbose=False, **kwargs):
 
 def _check_return_code(return_code: int, action: str):
     if return_code != 0:
-        raise RsyncError(f"[sysrsync runner] {action} exited with code {return_code}")
+        msg = "[sysrsync runner] {action} exited with code {return_code}".format(action=action, return_code=return_code)
+        raise RsyncError(msg)
