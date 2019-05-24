@@ -11,11 +11,16 @@ def get_rsync_command(source: str,
                       destination: str,
                       source_ssh: Optional[str] = None,
                       destination_ssh: Optional[str] = None,
-                      exclusions: Iterable[str] = [],
+                      exclusions: Iterable[str] = None,
                       sync_source_contents: bool = True,
-                      options: Iterable[str] = []) -> List[str]:
+                      options: Iterable[str] = None) -> List[str]:
     if (source_ssh is not None and destination_ssh is not None):
         raise RemotesError()
+
+    if exclusions is None:
+        exclusions = []
+    if options is None:
+        options = []
 
     source = get_directory_with_ssh(source, source_ssh)
     destination = get_directory_with_ssh(destination, destination_ssh)

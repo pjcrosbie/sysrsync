@@ -6,9 +6,12 @@ from .exceptions import RsyncError
 from .command_maker import get_rsync_command
 
 
-def run(cwd=os.getcwd(), strict=True, verbose=False, **kwargs):
+def run(cwd=None, strict=True, verbose=False, **kwargs):
     rsync_command = get_rsync_command(**kwargs)
     rsync_string = ' '.join(rsync_command)
+
+    if cwd is None:
+        cwd = os.getcwd()
 
     if verbose is True:
         print('[sysrsync runner] running command:')
