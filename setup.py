@@ -14,7 +14,7 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/pjcrosbie/sysrsync",
-    packages=setuptools.find_packages(exclude=['tests']),
+    py_modules=["sysrsync"],
     platforms='any',
     classifiers=[
         "Programming Language :: Python :: 3",

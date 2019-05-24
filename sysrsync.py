@@ -1,0 +1,160 @@
+# sysrsync.py
+
+import os
+import sys
+import pipes
+import subprocess
+import collections
+
+from functools import reduce
+from operator import iconcat
+
+from typing import Any, Iterable, List, Tuple, Optional
+
+
+
+__version__ = '0.2.0-alpha'
+
+
+
+def run(cwd=None, strict=True, verbose=False, **kwargs):
+    rsync_command = get_rsync_command(**kwargs)
+    rsync_string = ' '.join(rsync_command)
+
+    if cwd is None:
+        cwd = os.getcwd()
+
+    if verbose is True:
+        print('[sysrsync runner] running command:')
+        print(rsync_string)
+    process = subprocess.run(rsync_command, cwd=cwd)
+
+    if strict is True:
+        code = process.returncode
+        _check_return_code(code, rsync_string)
+
+    return process
+
+
+def _check_return_code(return_code: int, action: str):
+    if return_code != 0:
+        msg = "[sysrsync runner] {action} exited with code {return_code}".format(action=action, return_code=return_code)
+        raise RsyncError(msg)
+
+        from typing import Iterable, List, Optional
+
+
+#####################################################################
+## command_maker
+
+def get_rsync_command(source: str,
+                      destination: str,
+                      source_ssh: Optional[str] = None,
+                      destination_ssh: Optional[str] = None,
+                      exclusions: Iterable[str] = None,
+                      sync_source_contents: bool = True,
+                      options: Iterable[str] = None) -> List[str]:
+    if (source_ssh is not None and destination_ssh is not None):
+        raise RemotesError()
+
+    if exclusions is None:
+        exclusions = []
+    if options is None:
+        options = []
+
+    source = get_directory_with_ssh(source, source_ssh)
+    destination = get_directory_with_ssh(destination, destination_ssh)
+
+    if is_path_to_file(source, (source_ssh is not None)):
+        sync_source_contents = False
+
+    source, destination = sanitize_trailing_slash(
+        source, destination, sync_source_contents)
+
+    exclusions = get_exclusions(exclusions)
+
+    return ['rsync',
+            *options,
+            source,
+            destination,
+            *exclusions]
+
+
+def get_exclusions(exclusions: Iterable[str]) -> Iterable[str]:
+    return flatten((('--exclude', exclusion) for exclusion in exclusions if exclusion != '--exclude'))
+
+
+#####################################################################
+## exceptions
+
+class RemotesError(Exception):
+    def __init__(self):
+        message = 'source and destination cannot both be remote'
+        super().__init__(message)
+
+
+class RsyncError(Exception):
+    pass
+
+
+#####################################################################
+## helpers: directory
+
+
+def get_directory_with_ssh(directory: str, ssh: Optional[str]) -> str:
+    if ssh is None:
+        return directory
+
+    return '{ssh}:{directory}'.format(ssh=ssh, directory=directory)
+
+
+def sanitize_trailing_slash(source_dir: str, target_dir: str, sync_sourcedir_contents: bool = True) -> Tuple[str, str]:
+    target_dir = strip_trailing_slash(target_dir)
+
+    if sync_sourcedir_contents is True:
+        source_dir = add_trailing_slash(source_dir)
+    else:
+        source_dir = strip_trailing_slash(source_dir)
+
+    return source_dir, target_dir
+
+
+def strip_trailing_slash(directory: str) -> str:
+    return (directory[:-1]
+            if directory.endswith('/')
+            else directory)
+
+
+def add_trailing_slash(directory: str) -> str:
+    return (directory
+            if directory.endswith('/')
+            else '{directory}/'.format(directory=directory))
+
+
+#####################################################################
+## helpers: files
+
+
+def is_path_to_file(path, is_remote) -> bool:
+    if is_remote is True:
+        return exists_remote(path)
+
+    return os.path.isfile(path)
+
+
+def exists_remote(host_with_path):
+    "Test if a file exists at path on a host accessible with SSH."
+    host, path = host_with_path.split(':', 1)
+    return subprocess.call(['ssh', host, 'test -f {}'.format(pipes.quote(path))]) == 0
+
+
+#####################################################################
+## helpers: iterators
+
+
+def flatten(input_iter: Iterable[Any]) -> List[Any]:
+    list_of_lists = (element if isinstance(element, collections.Iterable)
+                     else [element]
+                     for element in input_iter)
+
+    return reduce(iconcat, list_of_lists, [])

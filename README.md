@@ -1,7 +1,8 @@
 # sysrsync
-Simple and safe native rsync wrapper for Python 3
+Simple and safe subprocess rsync wrapper for Python 3
 
-> - pjc fork is simple rollback to allow python 3.5 by removing f-string
+> - pjc fork is simple rollback to allow python 3.5 by removing f-string and squishing original nice project structure into a single file module
+> - don't mean to imply any of these changes are an improvement, probably a degradation but add some convenience for my personal use
 > - minor change to mutable and func call default args in some functions. this is a potential source of bugs in a lib or other setting where func may be called multiple times but the default arg is eval only once on import
 
 ## Requirements

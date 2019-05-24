@@ -2,6 +2,6 @@
 
 .Phony: test
 
-test: pipenv
-	pipenv run nosetests -vv tests/*.py
+test:
+	pipenv run nosetests -vv test_sysrsync.py
 
