@@ -11,13 +11,14 @@ from operator import iconcat
 
 from typing import Any, Iterable, List, Tuple, Optional
 
-
+import pprint as pprint_lib 
+pprint = pprint_lib.PrettyPrinter(indent=1).pprint 
 
 __version__ = '0.2.0-alpha'
 
 
 
-def run(cwd=None, strict=True, verbose=False, **kwargs):
+def run(cwd=None, strict=True, verbose=False, timeout=60*3, **kwargs):
     rsync_command = get_rsync_command(**kwargs)
     rsync_string = ' '.join(rsync_command)
 
@@ -25,23 +26,24 @@ def run(cwd=None, strict=True, verbose=False, **kwargs):
         cwd = os.getcwd()
 
     if verbose is True:
-        print('[sysrsync runner] running command:')
+        print('[sysrsync runner] running command (timeout={} secs):'.format())
         print(rsync_string)
-    process = subprocess.run(rsync_command, cwd=cwd)
+
+    subprocess_result = run_command.run(rsync_command, cwd=cwd, timeout=timeout)
 
     if strict is True:
-        code = process.returncode
-        _check_return_code(code, rsync_string)
+        code = subprocess_result["returncode"]
+        _check_return_code(code, rsync_string, subprocess_result)
 
-    return process
+    return subprocess_result
 
 
-def _check_return_code(return_code: int, action: str):
+def _check_return_code(return_code: int, action: str, subprocess_result: dict):
     if return_code != 0:
+        pprint(subprocess_result)
         msg = "[sysrsync runner] {action} exited with code {return_code}".format(action=action, return_code=return_code)
         raise RsyncError(msg)
 
-        from typing import Iterable, List, Optional
 
 
 #####################################################################
@@ -158,3 +160,83 @@ def flatten(input_iter: Iterable[Any]) -> List[Any]:
                      for element in input_iter)
 
     return reduce(iconcat, list_of_lists, [])
+
+
+#####################################################################
+## subprocess.run() wrapper with nice return and timeout option
+
+def run_command(command_list, timeout=3, cwd=None):
+    '''
+    wrapper on subprocess.run()
+    returns results in dict along with many diagnostics for failure cases
+    '''
+    assert isinstance(command_list, list)
+
+    # explicit conversion of num to str
+    command_list = [str(elem) for elem in command_list]
+
+    try:
+        completed_process = subprocess.run(
+            command_list, 
+            check=True,             # exception on non-zero error code
+            timeout=timeout,        # exception on timeout secs
+            # capture both stderr and stdout
+            # decode() byte strings to normal utf strings, not necessary
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            universal_newlines=True,
+            cwd=cwd
+            )
+    except subprocess.CalledProcessError as error:
+        result = {
+            "result"     : "CalledProcessError",
+            "cmd"        : error.cmd,
+            "returncode" : error.returncode,
+            "stdout"     : error.stdout,
+            "stderr"     : error.stderr
+        }
+    except subprocess.TimeoutExpired as error:
+        result = {
+            "result"      : "TimeoutExpired",
+            "cmd"         : error.cmd,
+            "timeout"     : error.timeout,
+            "stdout"      : error.stdout,
+            "stderr"      : error.stderr,
+            "returncode"  : 1,
+        }
+    except:
+        err_type, err_value, traceback = sys.exc_info()
+        result = {
+            "result"            : "UnexpectedError",
+            "type"              : err_type,
+            "value"             : err_value,
+            "traceback"         : traceback,
+            "returncode"        : 1,
+        }
+        # HACK: for testing, uncomment this to get crash here
+        # raise    
+    else:
+        # all okay
+        result = {
+            "result"      : "OK",
+            "cmd"         : completed_process.args,
+            "stdout"      : completed_process.stdout,
+            "stderr"      : completed_process.stderr,
+            "returncode"  : completed_process.returncode
+        }
+         
+    # these function inputs
+    # note, 
+    #   cmd is a return item from subprocess.run()
+    #   cmd_list is what we pass to subprocess.run()
+    #   cmd_line should be cut and pasteable but 
+    #      not always, watch quoting args with spaces
+    command_line = ' '.join([str(elem) for elem in command_list])
+    result["inputs"] = {
+        "cmd_list" : command_list,
+        "cmd_line" : command_line,
+        "cwd"      : cwd,
+        "timeout"  : timeout,
+    }
+
+    return result

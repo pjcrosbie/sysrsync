@@ -233,3 +233,4 @@ def test_rsync_throws_both_remotes():
     target = '/b'
     get_rsync_command(source, target, source_ssh=source_ssh, destination_ssh=target_ssh)
 
+
